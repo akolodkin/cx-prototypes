@@ -1,0 +1,1341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Store Delivery Window Management - V2</title>
+    
+    <!-- Material Design Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- FullCalendar CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        :root {
+            --primary-color: #1976d2;
+            --secondary-color: #dc004e;
+            --success-color: #4caf50;
+            --warning-color: #ff9800;
+            --error-color: #f44336;
+            --surface-color: #ffffff;
+            --background-color: #f5f5f5;
+            --text-primary: #212121;
+            --text-secondary: #757575;
+            --divider-color: #e0e0e0;
+            --business-hours-color: #e3f2fd;
+            --capacity-low: #4caf50;
+            --capacity-medium: #ff9800;
+            --capacity-high: #f44336;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', Arial, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* Header Section */
+        .header {
+            background: var(--primary-color);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        /* Main Container */
+        .container {
+            display: grid;
+            grid-template-columns: 300px 1fr 350px;
+            grid-template-areas: "sidebar calendar capacity";
+            height: calc(100vh - 80px);
+            gap: 1rem;
+            padding: 1rem;
+        }
+
+        /* Sidebar - Business Hours Configuration */
+        .sidebar {
+            grid-area: sidebar;
+            background: var(--surface-color);
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow-y: auto;
+        }
+
+        .sidebar h3 {
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .business-hours-config {
+            margin-bottom: 2rem;
+        }
+
+        .day-config {
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+            border: 1px solid var(--divider-color);
+            border-radius: 4px;
+            background: #fafafa;
+        }
+
+        .day-config label {
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .time-inputs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .time-inputs input {
+            flex: 1;
+            padding: 0.5rem;
+            border: 1px solid var(--divider-color);
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }
+
+        .capacity-input {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .capacity-input input {
+            width: 80px;
+            padding: 0.5rem;
+            border: 1px solid var(--divider-color);
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .capacity-input span {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .closed-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        /* Calendar Section */
+        .calendar-section {
+            grid-area: calendar;
+            background: var(--surface-color);
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .calendar-header h2 {
+            font-size: 1.25rem;
+            font-weight: 500;
+        }
+
+        .view-controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1565c0;
+        }
+
+        .btn-outlined {
+            background: transparent;
+            color: var(--primary-color);
+            border: 1px solid var(--primary-color);
+        }
+
+        .btn-outlined:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        /* Capacity Overview Panel */
+        .capacity-panel {
+            grid-area: capacity;
+            background: var(--surface-color);
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow-y: auto;
+        }
+
+        .capacity-panel h3 {
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+
+        .capacity-summary {
+            margin-bottom: 2rem;
+        }
+
+        .summary-card {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 0.75rem;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .summary-card h4 {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.25rem;
+        }
+
+        .summary-card .value {
+            font-size: 1.25rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .capacity-chart {
+            margin-bottom: 2rem;
+        }
+
+        .capacity-chart canvas {
+            max-height: 200px;
+        }
+
+        /* Custom FullCalendar Styles */
+        .fc-event {
+            border: none !important;
+            margin-bottom: 2px !important;
+            border-radius: 4px !important;
+            font-size: 0.75rem !important;
+        }
+
+        .fc-daygrid-day {
+            position: relative;
+        }
+
+        .fc-daygrid-day-events {
+            min-height: 80px !important;
+        }
+
+        /* Business Hours Card Styles */
+        .business-hours-card {
+            background: var(--business-hours-color) !important;
+            color: var(--primary-color) !important;
+            border-left: 3px solid var(--primary-color) !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 4px !important;
+            padding: 2px 4px !important;
+        }
+
+        .business-hours-card .material-icons {
+            font-size: 12px !important;
+        }
+
+        /* Exception Card Styles */
+        .exception-holiday {
+            background: #ffebee !important;
+            color: var(--error-color) !important;
+            border-left: 3px solid var(--error-color) !important;
+        }
+
+        .exception-peak {
+            background: #fff3e0 !important;
+            color: var(--warning-color) !important;
+            border-left: 3px solid var(--warning-color) !important;
+        }
+
+        .exception-maintenance {
+            background: #f3e5f5 !important;
+            color: #9c27b0 !important;
+            border-left: 3px solid #9c27b0 !important;
+        }
+
+        .exception-special {
+            background: #e8f5e8 !important;
+            color: var(--success-color) !important;
+            border-left: 3px solid var(--success-color) !important;
+        }
+
+        /* Capacity Indicators on Calendar Days */
+        .fc-daygrid-day-top {
+            position: relative;
+        }
+
+        .day-capacity-indicator {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            font-size: 0.7rem;
+            background: rgba(0,0,0,0.1);
+            padding: 1px 4px;
+            border-radius: 2px;
+            z-index: 10;
+        }
+
+        .capacity-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--divider-color);
+        }
+
+        .capacity-bar-fill {
+            height: 100%;
+            transition: width 0.3s;
+        }
+
+        .capacity-low .capacity-bar-fill { background: var(--capacity-low); }
+        .capacity-medium .capacity-bar-fill { background: var(--capacity-medium); }
+        .capacity-high .capacity-bar-fill { background: var(--capacity-high); }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            animation: fadeIn 0.3s;
+        }
+
+        .modal-content {
+            background-color: var(--surface-color);
+            margin: 5% auto;
+            padding: 2rem;
+            border-radius: 8px;
+            width: 500px;
+            max-width: 90%;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            position: relative;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-header h3 {
+            font-weight: 500;
+            font-size: 1.25rem;
+        }
+
+        .close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--divider-color);
+            border-radius: 4px;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+        }
+
+        .capacity-comparison {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+
+        .capacity-comparison h4 {
+            margin-bottom: 0.75rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .capacity-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .capacity-row:last-child {
+            margin-bottom: 0;
+            font-weight: 500;
+            padding-top: 0.5rem;
+            border-top: 1px solid var(--divider-color);
+        }
+
+        .preset-buttons {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .preset-btn {
+            padding: 0.25rem 0.75rem;
+            font-size: 0.75rem;
+            background: #f5f5f5;
+            border: 1px solid var(--divider-color);
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .preset-btn:hover {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 2rem;
+        }
+
+        .btn-cancel {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--divider-color);
+        }
+
+        .btn-cancel:hover {
+            background: #f5f5f5;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .container {
+                grid-template-columns: 250px 1fr 300px;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .container {
+                grid-template-columns: 1fr;
+                grid-template-areas: 
+                    "calendar"
+                    "capacity"
+                    "sidebar";
+            }
+            
+            .sidebar, .capacity-panel {
+                height: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header Section -->
+    <div class="header">
+        <h1>Store Delivery Window Management - V2</h1>
+        <div class="header-actions">
+            <button class="btn btn-outlined" onclick="exportSchedule()">
+                <span class="material-icons">download</span>
+                Export Schedule
+            </button>
+            <button class="btn btn-primary" onclick="saveChanges()">
+                <span class="material-icons">save</span>
+                Save Changes
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Sidebar - Business Hours Configuration -->
+        <div class="sidebar">
+            <h3>Business Hours Configuration</h3>
+            
+            <div class="business-hours-config">
+                <div class="day-config">
+                    <label>Monday</label>
+                    <div class="time-inputs">
+                        <input type="time" value="08:00" id="mon-start">
+                        <input type="time" value="17:00" id="mon-end">
+                    </div>
+                    <div class="capacity-input">
+                        <input type="number" value="500" id="mon-capacity" min="0" max="999">
+                        <span>cartons</span>
+                    </div>
+                    <div class="closed-checkbox">
+                        <input type="checkbox" id="mon-closed">
+                        <label for="mon-closed">Closed</label>
+                    </div>
+                </div>
+
+                <div class="day-config">
+                    <label>Tuesday</label>
+                    <div class="time-inputs">
+                        <input type="time" value="08:00" id="tue-start">
+                        <input type="time" value="17:00" id="tue-end">
+                    </div>
+                    <div class="capacity-input">
+                        <input type="number" value="500" id="tue-capacity" min="0" max="999">
+                        <span>cartons</span>
+                    </div>
+                    <div class="closed-checkbox">
+                        <input type="checkbox" id="tue-closed">
+                        <label for="tue-closed">Closed</label>
+                    </div>
+                </div>
+
+                <div class="day-config">
+                    <label>Wednesday</label>
+                    <div class="time-inputs">
+                        <input type="time" value="08:00" id="wed-start">
+                        <input type="time" value="17:00" id="wed-end">
+                    </div>
+                    <div class="capacity-input">
+                        <input type="number" value="500" id="wed-capacity" min="0" max="999">
+                        <span>cartons</span>
+                    </div>
+                    <div class="closed-checkbox">
+                        <input type="checkbox" id="wed-closed">
+                        <label for="wed-closed">Closed</label>
+                    </div>
+                </div>
+
+                <div class="day-config">
+                    <label>Thursday</label>
+                    <div class="time-inputs">
+                        <input type="time" value="08:00" id="thu-start">
+                        <input type="time" value="17:00" id="thu-end">
+                    </div>
+                    <div class="capacity-input">
+                        <input type="number" value="500" id="thu-capacity" min="0" max="999">
+                        <span>cartons</span>
+                    </div>
+                    <div class="closed-checkbox">
+                        <input type="checkbox" id="thu-closed">
+                        <label for="thu-closed">Closed</label>
+                    </div>
+                </div>
+
+                <div class="day-config">
+                    <label>Friday</label>
+                    <div class="time-inputs">
+                        <input type="time" value="08:00" id="fri-start">
+                        <input type="time" value="17:00" id="fri-end">
+                    </div>
+                    <div class="capacity-input">
+                        <input type="number" value="500" id="fri-capacity" min="0" max="999">
+                        <span>cartons</span>
+                    </div>
+                    <div class="closed-checkbox">
+                        <input type="checkbox" id="fri-closed">
+                        <label for="fri-closed">Closed</label>
+                    </div>
+                </div>
+
+                <div class="day-config">
+                    <label>Saturday</label>
+                    <div class="time-inputs">
+                        <input type="time" value="09:00" id="sat-start">
+                        <input type="time" value="14:00" id="sat-end">
+                    </div>
+                    <div class="capacity-input">
+                        <input type="number" value="300" id="sat-capacity" min="0" max="999">
+                        <span>cartons</span>
+                    </div>
+                    <div class="closed-checkbox">
+                        <input type="checkbox" id="sat-closed">
+                        <label for="sat-closed">Closed</label>
+                    </div>
+                </div>
+
+                <div class="day-config">
+                    <label>Sunday</label>
+                    <div class="time-inputs">
+                        <input type="time" value="10:00" id="sun-start" disabled>
+                        <input type="time" value="16:00" id="sun-end" disabled>
+                    </div>
+                    <div class="capacity-input">
+                        <input type="number" value="0" id="sun-capacity" min="0" max="999" disabled>
+                        <span>cartons</span>
+                    </div>
+                    <div class="closed-checkbox">
+                        <input type="checkbox" id="sun-closed" checked>
+                        <label for="sun-closed">Closed</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <button class="btn btn-primary" onclick="updateBusinessHours()">
+                    <span class="material-icons">update</span>
+                    Update Schedule
+                </button>
+            </div>
+        </div>
+
+        <!-- Calendar Section -->
+        <div class="calendar-section">
+            <div class="calendar-header">
+                <h2>Delivery Windows Calendar</h2>
+                <div class="view-controls">
+                    <button class="btn btn-outlined" onclick="addException()">
+                        <span class="material-icons">add</span>
+                        Add Exception
+                    </button>
+                </div>
+            </div>
+            <div id="calendar"></div>
+        </div>
+
+        <!-- Capacity Overview Panel -->
+        <div class="capacity-panel">
+            <h3>Capacity Overview</h3>
+            
+            <div class="capacity-summary">
+                <div class="summary-card">
+                    <h4>Weekly Total Capacity</h4>
+                    <div class="value">2,800 cartons</div>
+                </div>
+                <div class="summary-card">
+                    <h4>Daily Average</h4>
+                    <div class="value">467 cartons</div>
+                </div>
+                <div class="summary-card">
+                    <h4>Peak Day</h4>
+                    <div class="value">Friday (750 cartons)</div>
+                </div>
+                <div class="summary-card">
+                    <h4>Current Utilization</h4>
+                    <div class="value">73%</div>
+                </div>
+            </div>
+
+            <div class="capacity-chart">
+                <h4 style="margin-bottom: 1rem; font-size: 1rem; color: var(--text-primary);">Weekly Capacity Trend</h4>
+                <canvas id="capacityChart" width="300" height="200"></canvas>
+            </div>
+
+            <div class="capacity-summary">
+                <h4 style="margin-bottom: 1rem; font-size: 1rem; color: var(--text-primary);">Capacity Alerts</h4>
+                <div class="summary-card" style="border-left-color: var(--warning-color);">
+                    <h4>High Utilization</h4>
+                    <div class="value">3 days over 80%</div>
+                </div>
+                <div class="summary-card" style="border-left-color: var(--success-color);">
+                    <h4>Available Capacity</h4>
+                    <div class="value">1,200 cartons</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Exception Modal -->
+    <div id="exceptionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add/Edit Exception</h3>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+
+            <form id="exceptionForm">
+                <div class="form-group">
+                    <label for="exceptionDate">Date</label>
+                    <input type="date" id="exceptionDate" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="exceptionType">Exception Type</label>
+                    <select id="exceptionType" required onchange="updateExceptionPresets()">
+                        <option value="">Select exception type</option>
+                        <option value="holiday">Federal Holiday</option>
+                        <option value="peak">Peak Season</option>
+                        <option value="maintenance">Maintenance</option>
+                        <option value="special">Special Event</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="exceptionTitle">Title</label>
+                    <input type="text" id="exceptionTitle" placeholder="Enter exception title" required>
+                </div>
+
+                <div class="capacity-comparison">
+                    <h4>Capacity Comparison</h4>
+                    <div class="capacity-row">
+                        <span>Normal Capacity:</span>
+                        <span id="normalCapacity">500 cartons</span>
+                    </div>
+                    <div class="capacity-row">
+                        <span>Exception Capacity:</span>
+                        <input type="number" id="exceptionCapacity" value="500" min="0" max="999" style="width: 80px; text-align: center;">
+                        <span>cartons</span>
+                    </div>
+                    <div class="capacity-row">
+                        <span>Difference:</span>
+                        <span id="capacityDifference" style="font-weight: bold;">0 cartons</span>
+                    </div>
+                    
+                    <div class="preset-buttons">
+                        <button type="button" class="preset-btn" onclick="setCapacity(0)">Holiday: 0</button>
+                        <button type="button" class="preset-btn" onclick="setCapacity(750)">Peak: 750</button>
+                        <button type="button" class="preset-btn" onclick="setCapacity(250)">Reduced: 250</button>
+                        <button type="button" class="preset-btn" onclick="setCapacity(600)">Special: 600</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="exceptionStart">Start Time</label>
+                    <input type="time" id="exceptionStart" value="08:00">
+                </div>
+
+                <div class="form-group">
+                    <label for="exceptionEnd">End Time</label>
+                    <input type="time" id="exceptionEnd" value="17:00">
+                </div>
+
+                <div class="form-group">
+                    <label for="exceptionNotes">Notes</label>
+                    <textarea id="exceptionNotes" placeholder="Additional notes or instructions" rows="3"></textarea>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-cancel" onclick="closeModal()">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="saveException()">
+                        <span class="material-icons">save</span>
+                        Save Exception
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- FullCalendar JS -->
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+
+    <script>
+        let calendar;
+        let currentEditingEvent = null;
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCalendar();
+            initializeCapacityChart();
+            setupEventListeners();
+        });
+
+        function initializeCalendar() {
+            const calendarEl = document.getElementById('calendar');
+            
+            calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                height: '100%',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,dayGridWeek'
+                },
+                selectable: true,
+                select: function(info) {
+                    openExceptionModal(info.startStr);
+                },
+                eventClick: function(info) {
+                    currentEditingEvent = info.event;
+                    editException(info.event);
+                },
+                dayCellDidMount: function(info) {
+                    addCapacityIndicator(info);
+                },
+                events: generateSampleEvents(),
+                eventDidMount: function(info) {
+                    customizeEventAppearance(info);
+                }
+            });
+            
+            calendar.render();
+        }
+
+        function generateSampleEvents() {
+            const events = [];
+            const today = new Date();
+            const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+            const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+            // Generate business hours cards for each day
+            for (let d = new Date(startOfMonth); d <= endOfMonth; d.setDate(d.getDate() + 1)) {
+                const dayOfWeek = d.getDay();
+                const dateStr = d.toISOString().split('T')[0];
+                
+                // Business hours cards
+                if (dayOfWeek >= 1 && dayOfWeek <= 5) { // Monday-Friday
+                    events.push({
+                        id: `business-${dateStr}`,
+                        title: '🕐 8:00 AM - 5:00 PM (500 cartons)',
+                        start: dateStr,
+                        className: 'business-hours-card',
+                        extendedProps: {
+                            type: 'business-hours',
+                            capacity: 500,
+                            startTime: '08:00',
+                            endTime: '17:00'
+                        }
+                    });
+                } else if (dayOfWeek === 6) { // Saturday
+                    events.push({
+                        id: `business-${dateStr}`,
+                        title: '🕐 9:00 AM - 2:00 PM (300 cartons)',
+                        start: dateStr,
+                        className: 'business-hours-card',
+                        extendedProps: {
+                            type: 'business-hours',
+                            capacity: 300,
+                            startTime: '09:00',
+                            endTime: '14:00'
+                        }
+                    });
+                }
+                // Sunday is closed (no business hours card)
+            }
+
+            // Add sample exceptions
+            const nextWeek = new Date(today);
+            nextWeek.setDate(today.getDate() + 7);
+
+            events.push({
+                id: 'holiday-1',
+                title: '🚫 Federal Holiday (0 cartons)',
+                start: nextWeek.toISOString().split('T')[0],
+                className: 'exception-holiday',
+                extendedProps: {
+                    type: 'exception',
+                    exceptionType: 'holiday',
+                    capacity: 0,
+                    originalCapacity: 500,
+                    startTime: '00:00',
+                    endTime: '23:59',
+                    notes: 'Store closed for Independence Day'
+                }
+            });
+
+            const peakDay = new Date(today);
+            peakDay.setDate(today.getDate() + 14);
+            events.push({
+                id: 'peak-1',
+                title: '📈 Peak Season (750 cartons)',
+                start: peakDay.toISOString().split('T')[0],
+                className: 'exception-peak',
+                extendedProps: {
+                    type: 'exception',
+                    exceptionType: 'peak',
+                    capacity: 750,
+                    originalCapacity: 500,
+                    startTime: '07:00',
+                    endTime: '19:00',
+                    notes: 'Extended hours for holiday season'
+                }
+            });
+
+            const maintenanceDay = new Date(today);
+            maintenanceDay.setDate(today.getDate() + 21);
+            events.push({
+                id: 'maintenance-1',
+                title: '🔧 Maintenance (200 cartons)',
+                start: maintenanceDay.toISOString().split('T')[0],
+                className: 'exception-maintenance',
+                extendedProps: {
+                    type: 'exception',
+                    exceptionType: 'maintenance',
+                    capacity: 200,
+                    originalCapacity: 500,
+                    startTime: '10:00',
+                    endTime: '15:00',
+                    notes: 'Loading dock maintenance - reduced capacity'
+                }
+            });
+
+            const specialDay = new Date(today);
+            specialDay.setDate(today.getDate() + 5);
+            events.push({
+                id: 'special-1',
+                title: '🎉 Special Event (600 cartons)',
+                start: specialDay.toISOString().split('T')[0],
+                className: 'exception-special',
+                extendedProps: {
+                    type: 'exception',
+                    exceptionType: 'special',
+                    capacity: 600,
+                    originalCapacity: 500,
+                    startTime: '06:00',
+                    endTime: '18:00',
+                    notes: 'Early start for promotional event'
+                }
+            });
+
+            return events;
+        }
+
+        function addCapacityIndicator(info) {
+            const dayEl = info.el;
+            const date = info.date;
+            const dateStr = date.toISOString().split('T')[0];
+            
+            // Get capacity for this day
+            const dayEvents = calendar.getEvents().filter(event => 
+                event.startStr === dateStr
+            );
+            
+            let totalCapacity = 0;
+            let hasBusinessHours = false;
+            
+            dayEvents.forEach(event => {
+                if (event.extendedProps.type === 'business-hours') {
+                    hasBusinessHours = true;
+                    totalCapacity = event.extendedProps.capacity;
+                } else if (event.extendedProps.type === 'exception') {
+                    totalCapacity = event.extendedProps.capacity;
+                }
+            });
+
+            // If no business hours and no exception, it's a closed day
+            if (!hasBusinessHours && totalCapacity === 0) {
+                totalCapacity = 0;
+            }
+
+            // Add capacity indicator
+            const indicator = document.createElement('div');
+            indicator.className = 'day-capacity-indicator';
+            indicator.textContent = `${totalCapacity}c`;
+            dayEl.querySelector('.fc-daygrid-day-top').appendChild(indicator);
+
+            // Add capacity bar
+            const capacityBar = document.createElement('div');
+            capacityBar.className = 'capacity-bar';
+            
+            const capacityFill = document.createElement('div');
+            capacityFill.className = 'capacity-bar-fill';
+            
+            // Simulate current usage (random for demo)
+            const currentUsage = Math.floor(Math.random() * totalCapacity * 0.9);
+            const utilizationPercent = totalCapacity > 0 ? (currentUsage / totalCapacity) * 100 : 0;
+            capacityFill.style.width = utilizationPercent + '%';
+            
+            // Color based on utilization
+            if (utilizationPercent < 60) {
+                capacityBar.classList.add('capacity-low');
+            } else if (utilizationPercent < 85) {
+                capacityBar.classList.add('capacity-medium');
+            } else {
+                capacityBar.classList.add('capacity-high');
+            }
+            
+            capacityBar.appendChild(capacityFill);
+            dayEl.appendChild(capacityBar);
+        }
+
+        function customizeEventAppearance(info) {
+            const event = info.event;
+            const el = info.el;
+            
+            // Customize based on event type
+            if (event.extendedProps.type === 'business-hours') {
+                el.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 4px; font-size: 0.7rem; padding: 2px;">
+                        <span class="material-icons" style="font-size: 10px;">schedule</span>
+                        <span>${event.extendedProps.startTime} - ${event.extendedProps.endTime}</span>
+                    </div>
+                    <div style="font-size: 0.65rem; padding-left: 14px;">
+                        ${event.extendedProps.capacity} cartons
+                    </div>
+                `;
+            } else if (event.extendedProps.type === 'exception') {
+                const icon = getExceptionIcon(event.extendedProps.exceptionType);
+                el.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 4px; font-size: 0.7rem; padding: 2px;">
+                        <span>${icon}</span>
+                        <span>${event.title.split('(')[0].trim()}</span>
+                    </div>
+                    <div style="font-size: 0.65rem; padding-left: 14px;">
+                        ${event.extendedProps.capacity} cartons
+                    </div>
+                `;
+            }
+        }
+
+        function getExceptionIcon(type) {
+            switch (type) {
+                case 'holiday': return '🚫';
+                case 'peak': return '📈';
+                case 'maintenance': return '🔧';
+                case 'special': return '🎉';
+                default: return '📅';
+            }
+        }
+
+        function initializeCapacityChart() {
+            const ctx = document.getElementById('capacityChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'Capacity (cartons)',
+                        data: [500, 500, 500, 500, 750, 300, 0],
+                        borderColor: '#1976d2',
+                        backgroundColor: 'rgba(25, 118, 210, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }, {
+                        label: 'Current Usage',
+                        data: [380, 420, 350, 480, 650, 180, 0],
+                        borderColor: '#ff9800',
+                        backgroundColor: 'rgba(255, 152, 0, 0.1)',
+                        borderWidth: 2,
+                        fill: false,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 800,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + ' c';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function setupEventListeners() {
+            // Exception capacity input listener
+            document.getElementById('exceptionCapacity').addEventListener('input', updateCapacityDifference);
+            
+            // Closed checkbox listeners
+            const closedCheckboxes = document.querySelectorAll('[id$="-closed"]');
+            closedCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    const dayPrefix = this.id.replace('-closed', '');
+                    const startInput = document.getElementById(dayPrefix + '-start');
+                    const endInput = document.getElementById(dayPrefix + '-end');
+                    const capacityInput = document.getElementById(dayPrefix + '-capacity');
+                    
+                    if (this.checked) {
+                        startInput.disabled = true;
+                        endInput.disabled = true;
+                        capacityInput.disabled = true;
+                        capacityInput.value = '0';
+                    } else {
+                        startInput.disabled = false;
+                        endInput.disabled = false;
+                        capacityInput.disabled = false;
+                        capacityInput.value = dayPrefix === 'sat' ? '300' : '500';
+                    }
+                });
+            });
+        }
+
+        function addException() {
+            openExceptionModal();
+        }
+
+        function openExceptionModal(selectedDate = null) {
+            currentEditingEvent = null;
+            document.getElementById('exceptionModal').style.display = 'block';
+            
+            // Reset form
+            document.getElementById('exceptionForm').reset();
+            
+            if (selectedDate) {
+                document.getElementById('exceptionDate').value = selectedDate;
+                updateNormalCapacity(selectedDate);
+            }
+            
+            updateCapacityDifference();
+        }
+
+        function editException(event) {
+            document.getElementById('exceptionModal').style.display = 'block';
+            
+            // Populate form with event data
+            document.getElementById('exceptionDate').value = event.startStr;
+            document.getElementById('exceptionType').value = event.extendedProps.exceptionType;
+            document.getElementById('exceptionTitle').value = event.title.split('(')[0].replace(/[🚫📈🔧🎉]/g, '').trim();
+            document.getElementById('exceptionCapacity').value = event.extendedProps.capacity;
+            document.getElementById('exceptionStart').value = event.extendedProps.startTime;
+            document.getElementById('exceptionEnd').value = event.extendedProps.endTime;
+            document.getElementById('exceptionNotes').value = event.extendedProps.notes || '';
+            
+            updateNormalCapacity(event.startStr);
+            updateCapacityDifference();
+        }
+
+        function updateNormalCapacity(dateStr) {
+            const date = new Date(dateStr);
+            const dayOfWeek = date.getDay();
+            let normalCapacity = 500; // Default
+            
+            if (dayOfWeek === 6) { // Saturday
+                normalCapacity = 300;
+            } else if (dayOfWeek === 0) { // Sunday
+                normalCapacity = 0;
+            }
+            
+            document.getElementById('normalCapacity').textContent = normalCapacity + ' cartons';
+        }
+
+        function updateCapacityDifference() {
+            const normalCapacityText = document.getElementById('normalCapacity').textContent;
+            const normalCapacity = parseInt(normalCapacityText.replace(' cartons', ''));
+            const exceptionCapacity = parseInt(document.getElementById('exceptionCapacity').value) || 0;
+            const difference = exceptionCapacity - normalCapacity;
+            
+            const differenceEl = document.getElementById('capacityDifference');
+            differenceEl.textContent = (difference >= 0 ? '+' : '') + difference + ' cartons';
+            differenceEl.style.color = difference > 0 ? '#4caf50' : difference < 0 ? '#f44336' : '#757575';
+        }
+
+        function updateExceptionPresets() {
+            const exceptionType = document.getElementById('exceptionType').value;
+            const titleInput = document.getElementById('exceptionTitle');
+            
+            switch (exceptionType) {
+                case 'holiday':
+                    titleInput.value = 'Federal Holiday';
+                    setCapacity(0);
+                    break;
+                case 'peak':
+                    titleInput.value = 'Peak Season';
+                    setCapacity(750);
+                    break;
+                case 'maintenance':
+                    titleInput.value = 'Maintenance Window';
+                    setCapacity(250);
+                    break;
+                case 'special':
+                    titleInput.value = 'Special Event';
+                    setCapacity(600);
+                    break;
+            }
+        }
+
+        function setCapacity(capacity) {
+            document.getElementById('exceptionCapacity').value = capacity;
+            updateCapacityDifference();
+        }
+
+        function saveException() {
+            const form = document.getElementById('exceptionForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            const exceptionData = {
+                date: document.getElementById('exceptionDate').value,
+                type: document.getElementById('exceptionType').value,
+                title: document.getElementById('exceptionTitle').value,
+                capacity: parseInt(document.getElementById('exceptionCapacity').value),
+                startTime: document.getElementById('exceptionStart').value,
+                endTime: document.getElementById('exceptionEnd').value,
+                notes: document.getElementById('exceptionNotes').value
+            };
+
+            if (currentEditingEvent) {
+                // Update existing event
+                currentEditingEvent.setProp('title', `${getExceptionIcon(exceptionData.type)} ${exceptionData.title} (${exceptionData.capacity} cartons)`);
+                currentEditingEvent.setExtendedProp('exceptionType', exceptionData.type);
+                currentEditingEvent.setExtendedProp('capacity', exceptionData.capacity);
+                currentEditingEvent.setExtendedProp('startTime', exceptionData.startTime);
+                currentEditingEvent.setExtendedProp('endTime', exceptionData.endTime);
+                currentEditingEvent.setExtendedProp('notes', exceptionData.notes);
+                currentEditingEvent.setProp('className', `exception-${exceptionData.type}`);
+            } else {
+                // Create new event
+                calendar.addEvent({
+                    id: `exception-${Date.now()}`,
+                    title: `${getExceptionIcon(exceptionData.type)} ${exceptionData.title} (${exceptionData.capacity} cartons)`,
+                    start: exceptionData.date,
+                    className: `exception-${exceptionData.type}`,
+                    extendedProps: {
+                        type: 'exception',
+                        exceptionType: exceptionData.type,
+                        capacity: exceptionData.capacity,
+                        originalCapacity: 500, // This would be calculated based on business hours
+                        startTime: exceptionData.startTime,
+                        endTime: exceptionData.endTime,
+                        notes: exceptionData.notes
+                    }
+                });
+            }
+
+            closeModal();
+            
+            // Show success notification
+            showNotification('Exception saved successfully', 'success');
+            
+            // Refresh capacity indicators
+            setTimeout(() => {
+                calendar.render();
+            }, 100);
+        }
+
+        function updateBusinessHours() {
+            // This would update the business hours events in the calendar
+            showNotification('Business hours updated successfully', 'success');
+            
+            // Refresh calendar to show updated business hours
+            setTimeout(() => {
+                calendar.refetchEvents();
+            }, 100);
+        }
+
+        function closeModal() {
+            document.getElementById('exceptionModal').style.display = 'none';
+            currentEditingEvent = null;
+        }
+
+        function exportSchedule() {
+            showNotification('Schedule exported successfully', 'success');
+        }
+
+        function saveChanges() {
+            showNotification('All changes saved successfully', 'success');
+        }
+
+        function showNotification(message, type = 'info') {
+            // Create a simple notification
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${type === 'success' ? '#4caf50' : type === 'error' ? '#f44336' : '#2196f3'};
+                color: white;
+                padding: 1rem 1.5rem;
+                border-radius: 4px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                z-index: 1001;
+                font-family: 'Roboto', sans-serif;
+                font-size: 0.875rem;
+            `;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transition = 'opacity 0.3s';
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 300);
+            }, 3000);
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('exceptionModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+    </script>
+</body>
+</html>
